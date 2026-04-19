@@ -26,6 +26,7 @@ concurrency:
 
 jobs:
   plan:
+    if: github.event.inputs.action != 'destroy'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -61,7 +62,7 @@ jobs:
 
   apply:
     needs: plan
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
     runs-on: ubuntu-latest
     environment: dev
     defaults:
