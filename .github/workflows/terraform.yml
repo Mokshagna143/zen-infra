@@ -18,15 +18,13 @@ on:
       action:
         description: 'Terraform action'
         required: true
-        default: plan
+        default: destroy
         type: choice
         options:
-          - plan
-          - apply
           - destroy
       confirm_destroy:
         description: 'Type "destroy" to confirm destruction'
-        required: false
+        required: true
         default: ''
 
 concurrency:
@@ -35,7 +33,7 @@ concurrency:
 
 jobs:
   plan:
-    if: github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action != 'destroy')
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -80,7 +78,6 @@ jobs:
           path: envs/dev/tfplan
 
   apply:
-    needs: plan
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: dev
@@ -107,17 +104,14 @@ jobs:
       - name: Terraform init
         run: terraform init
 
-      - name: Download plan artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: tfplan
-          path: envs/dev
-
       - name: Terraform apply
-        run: terraform apply -auto-approve tfplan
+        run: |
+          terraform apply -auto-approve \
+            -var="db_password=${{ secrets.DEV_DB_PASSWORD }}" \
+            -var="jwt_secret=${{ secrets.DEV_JWT_SECRET }}"
 
   destroy:
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy'
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'destroy' && github.event.inputs.confirm_destroy == 'destroy'
     runs-on: ubuntu-latest
     environment: dev
     defaults:
